@@ -28,6 +28,12 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
   const hipHistoryRef = useRef<number[]>([]);
   const lastRepTsRef = useRef<number>(0);
 
+  // Issue tracking refs for form feedback
+  const goodFormSinceRef = useRef<number | null>(null);
+  const issueFirstSeenRef = useRef<Map<string, number>>(new Map());
+  const issueLastSpokenRef = useRef<Map<string, number>>(new Map());
+  const issueSpokenCountRef = useRef<Map<string, number>>(new Map());
+
     // Latest active tip text to say (updated by analysis)
     const lastTipTextRef = useRef<string>("");
 
@@ -179,12 +185,12 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
         const pose = poses && poses.length ? poses[0] : null;
 
         // Only draw overlays; do NOT draw the video frame to avoid duplication/ghosting
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx!.clearRect(0, 0, canvas.width, canvas.height);
 
         if (pose) {
           const keypoints = pose.keypoints || pose;
-          drawKeypoints(ctx, keypoints);
-          drawSkeleton(ctx, keypoints);
+          drawKeypoints(ctx!, keypoints);
+          drawSkeleton(ctx!, keypoints);
           processPoseMetrics(keypoints);
         }
       } catch (err) {
@@ -264,7 +270,7 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
   }
 
   // ElevenLabs TTS with strong anti-spam: in-flight mutex, per-phrase/global backoff, Retry-After respect
-  async function speakTexts(texts: string[], opts?: { force?: boolean }) {
+  async function speakTexts(texts: string[], opts?: { force?: boolean; bypassBackoff?: boolean }) {
     const line = texts.join(". ").trim();
     if (!line) return;
 
@@ -276,12 +282,12 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
       return;
     }
 
-    // Respect global backoff after any 429
-    if (now < ttsBackoffUntilRef.current) return;
+    // Respect global backoff after any 429 (unless bypassing)
+    if (!opts?.bypassBackoff && now < ttsBackoffUntilRef.current) return;
 
-    // Respect per-phrase nextAllowed
+    // Respect per-phrase nextAllowed (unless bypassing)
     const nextAllowed = perPhraseNextAllowedRef.current.get(phraseKey) || 0;
-    if (now < nextAllowed) return;
+    if (!opts?.bypassBackoff && now < nextAllowed) return;
 
     // Optional soft global throttle (does not bypass backoff)
     if (!opts?.force && coachConfig.globalSoftRequestMs > 0) {
