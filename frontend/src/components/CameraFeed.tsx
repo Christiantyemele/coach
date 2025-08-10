@@ -14,6 +14,15 @@ export default function CameraFeed() {
   const detectIntervalRef = useRef<number | null>(null);
   const detectorRef = useRef<any>(null);
 
+  // New: metrics state to render outside the video overlay
+  const [metrics, setMetrics] = useState({
+    hipY: 0,
+    depthThreshold: 0,
+    torsoAngleDeg: 0,
+    kneeAngle: 0,
+    issues: [] as string[]
+  });
+
   useEffect(() => {
     let mounted = true;
     let stream: MediaStream | null = null;
@@ -91,25 +100,16 @@ export default function CameraFeed() {
         const poses = await detector.estimatePoses(video);
         // use first detected pose
         const pose = poses && poses.length ? poses[0] : null;
-        // clear canvas and draw
+
+        // Only draw overlays; do NOT draw the video frame to avoid duplication/ghosting
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // draw mirrored to match user view
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.translate(-canvas.width, 0);
-        // draw current video frame as low-opacity background (optional)
-        ctx.globalAlpha = 0.4;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1;
+
         if (pose) {
           const keypoints = pose.keypoints || pose;
           drawKeypoints(ctx, keypoints);
           drawSkeleton(ctx, keypoints);
           processPoseMetrics(keypoints);
-        } else {
-          // no pose
         }
-        ctx.restore();
       } catch (err) {
         console.warn("pose detect err", err);
       } finally {
@@ -222,7 +222,7 @@ export default function CameraFeed() {
 
     const hipY = (hip.y / vH) * canvasH;
     const kneeY = (knee.y / vH) * canvasH;
-    //const ankleY = (ankle.y / vH) * canvasH;
+    const ankleY = (ankle.y / vH) * canvasH;
     const shoulderY = (shoulder.y / vH) * canvasH;
 
     // smoothing window (rolling average)
@@ -303,22 +303,14 @@ export default function CameraFeed() {
     if (kneeAngle < 80) issues.push("insufficient_knee_angle");
     if (avgHipY < baselineHip.current + 5) issues.push("not_much_movement");
 
-    // display small overlay text
-    const ctx = canvasRef.current?.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.fillRect(8, 8, 200, 84);
-      ctx.fillStyle = "#e6eef8";
-      ctx.font = "14px Arial";
-      ctx.fillText(`Reps: ${repCount}`, 16, 28);
-      ctx.fillText(`HipY: ${avgHipY.toFixed(1)}`, 16, 46);
-      ctx.fillText(`DepthThr: ${depthThreshold.toFixed(1)}`, 16, 64);
-      ctx.fillText(`Torso: ${torsoAngleDeg.toFixed(0)}° Knee: ${kneeAngle.toFixed(0)}°`, 16, 82);
-      if (issues.length) {
-        ctx.fillStyle = "rgba(255,80,80,0.95)";
-        ctx.fillText(`Issues: ${issues.join(", ")}`, 16, 100);
-      }
-    }
+    // instead of drawing text on the canvas overlay (which gets mirrored), push metrics into state
+    setMetrics({
+      hipY: avgHipY,
+      depthThreshold,
+      torsoAngleDeg,
+      kneeAngle,
+      issues
+    });
   }
 
   return (
@@ -334,9 +326,30 @@ export default function CameraFeed() {
           </>
         )}
       </div>
+
       <div className="camera-info">
-        <p>{statusText}</p>
-        <p>Tip: position full body in frame for squat detection.</p>
+        <div className="status-row">
+          <p className="status-text">{statusText}</p>
+        </div>
+
+        {/* New: metrics panel rendered as DOM so it is not mirrored and readable */}
+        <div className="metrics-panel" role="region" aria-label="Pose metrics">
+          <div className="metrics-row"><strong>Reps:</strong> {repCount}</div>
+          <div className="metrics-row"><strong>Hip Y:</strong> {metrics.hipY.toFixed(1)}</div>
+          <div className="metrics-row"><strong>Depth Thr:</strong> {metrics.depthThreshold.toFixed(1)}</div>
+          <div className="metrics-row"><strong>Torso:</strong> {metrics.torsoAngleDeg.toFixed(0)}°</div>
+          <div className="metrics-row"><strong>Knee:</strong> {metrics.kneeAngle.toFixed(0)}°</div>
+          <div className="metrics-row"><strong>Issues:</strong> {metrics.issues.length ? metrics.issues.join(", ") : "none"}</div>
+          <div style={{ marginTop: 8 }}>
+            <button onClick={() => { console.log("Export last metrics", metrics); alert("Metrics logged to console."); }}>
+              Export metrics (debug)
+            </button>
+          </div>
+        </div>
+
+        <div className="camera-help">
+          <p>Tip: position full body in frame for squat detection.</p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React from "react";
 import ChatPanel from "./components/ChatPanel";
 import CameraFeed from "./components/CameraFeed";
+import PlanGenerator from "./components/PlanGenerator";
 
 export default function App() {
   return (
@@ -13,6 +14,8 @@ export default function App() {
           <CameraFeed />
         </section>
         <section className="right-pane">
+          <PlanGenerator />
+          <div style={{ height: 12 }} />
           <ChatPanel />
         </section>
       </main>
