@@ -34,9 +34,9 @@ Hour 3–6 — Camera feed + MoveNet pose detection + rep detection (3 h)
 Acceptance:
 - Pose keypoints visible; reps count reliably for test subject (3 reps)
 
-Hour 6–7 — Local analyzeForm & UI integration (1 h)
-- Implement analysis function mapping keypoints -> issues list
-- Allow chat to request analysis
+Hour 6–7 — Local analyze and vocal feedback & UI integration (1 h)
+- Implement analysis function mapping keypoints -> execise rules based on exercise
+- return feedback as vocal TTS
 Acceptance:
 - "Analyze" returns issues like "insufficient depth", "leaning forward"
 

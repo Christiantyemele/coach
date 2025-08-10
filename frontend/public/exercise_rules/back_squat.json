@@ -38,16 +38,13 @@
   "messages": {
     "depth_ratio": {
       "fail": "Depth insufficient: try lowering your hip until it reaches knee level.",
-      "warn": "Depth may be shallow.",
-      "pass": "Nice depth — keep that range of motion."
+      "warn": "Depth may be shallow."
     },
     "torso_angle": {
-      "warn": "You are leaning forward; keep your chest up.",
-      "pass": "Great chest position — torso stays upright."
+      "warn": "You are leaning forward; keep your chest up."
     },
     "knee_angle_min": {
-      "warn": "Knee angle small, check knee tracking and control descent.",
-      "pass": "Knees tracking well — solid control."
+      "warn": "Knee angle small, check knee tracking and control descent."
     }
   }
 }
