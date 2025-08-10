@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import ChatPanel from "./components/ChatPanel";
-import CameraFeed from "./components/CameraFeed";
 import PlanGenerator from "./components/PlanGenerator";
+import RoutineRunner from "./components/RoutineRunner";
 
 export default function App() {
+  const [activePlan, setActivePlan] = useState<any | null>(null);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -11,10 +13,11 @@ export default function App() {
       </header>
       <main className="app-main">
         <section className="left-pane">
-          <CameraFeed />
+          {/* RoutineRunner renders CameraFeed and routine UI; pass the plan generated on the right */}
+          <RoutineRunner plan={activePlan} startDay={1} />
         </section>
         <section className="right-pane">
-          <PlanGenerator />
+          <PlanGenerator onPlanGenerated={(p) => setActivePlan(p)} />
           <div style={{ height: 12 }} />
           <ChatPanel />
         </section>

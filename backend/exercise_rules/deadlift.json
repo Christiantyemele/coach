@@ -1,0 +1,46 @@
+{
+  "id": "deadlift",
+  "name": "Deadlift",
+  "description": "Basic deadlift validation using available metrics.",
+  "metrics": {
+    "required": ["hipY", "kneeY", "torsoAngleDeg", "kneeAngle", "confidence"],
+    "min_confidence": 0.45
+  },
+  "rules": [
+    {
+      "id": "torso_angle_max",
+      "type": "max",
+      "description": "Keep torso braced; excessive rounding indicates form loss.",
+      "params": { "max_deg": 30 },
+      "severity": "warn"
+    },
+    {
+      "id": "knee_angle_min",
+      "type": "min",
+      "description": "Avoid excessive knee bend at the start.",
+      "params": { "min_deg": 100 },
+      "severity": "warn"
+    },
+    {
+      "id": "depth_ratio",
+      "type": "ratio",
+      "description": "Hips should travel enough relative to knee-hip distance (proxy).",
+      "params": { "min_ratio": 0.30 },
+      "severity": "warn"
+    }
+  ],
+  "messages": {
+    "torso_angle_max": {
+      "warn": "Keep your back tight; avoid rounding.",
+      "pass": "Strong brace — back stays neutral."
+    },
+    "knee_angle_min": {
+      "warn": "Hips too low — avoid excessive knee bend.",
+      "pass": "Good hip position at the start."
+    },
+    "depth_ratio": {
+      "warn": "Drive hips through; complete the lockout.",
+      "pass": "Good hip travel."
+    }
+  }
+}

@@ -33,5 +33,24 @@ export const coachConfig = {
 
   // MVP aggressive TTS mode (use sparingly, e.g., for testing)
   mvpAggressiveTts: false,     // Disable for production to prevent spam
-  mvpTtsIntervalMs: 3000       // Only relevant if aggressive mode is on
+  mvpTtsIntervalMs: 3000,      // Only relevant if aggressive mode is on
+
+  // Music + ducking
+  musicTracks: [
+    // Royalty-free examples (Pixabay). Replace or add your own as needed.
+    { title: "Uplift Beat", url: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_9e2f0e46a7.mp3?filename=upbeat-112191.mp3" },
+    { title: "Focus Flow", url: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_59e6c06122.mp3?filename=lofi-study-112191.mp3" }
+  ],
+  musicDefaultIndex: 0,
+  musicDuckFactor: 0.3,        // reduce music volume to 30% during TTS
+  musicDefaultVolume: 0.6,     // default music volume when not ducked
+
+  // Motivational snippets (spoken between reps)
+  snippetCooldownMs: 7000,     // min gap between snippets
+  snippetPhrases: [
+    "Nice rep — keep your breathing steady.",
+    "Strong form. Stay tall and drive through the heels.",
+    "Great tempo. Keep the core braced.",
+    "Smooth motion — maintain your balance."
+  ]
 };
