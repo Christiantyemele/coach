@@ -1,0 +1,35 @@
+{
+  "id": "overhead_press",
+  "name": "Overhead Press",
+  "description": "Overhead press validation using torso lean and knee extension.",
+  "metrics": {
+    "required": ["torsoAngleDeg", "kneeAngle", "confidence"],
+    "min_confidence": 0.45
+  },
+  "rules": [
+    {
+      "id": "torso_angle_max",
+      "type": "max",
+      "description": "Limit torso lean during the press.",
+      "params": { "max_deg": 25 },
+      "severity": "warn"
+    },
+    {
+      "id": "knee_locked",
+      "type": "min",
+      "description": "Keep knees extended; avoid push press (proxy).",
+      "params": { "min_deg": 160 },
+      "severity": "warn"
+    }
+  ],
+  "messages": {
+    "torso_angle_max": {
+      "warn": "Stay upright — tighten your core.",
+      "pass": "Nice — torso upright."
+    },
+    "knee_locked": {
+      "warn": "Don’t dip your knees — strict press.",
+      "pass": "Knees locked — strict press."
+    }
+  }
+}

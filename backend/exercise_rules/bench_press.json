@@ -1,0 +1,35 @@
+{
+  "id": "bench_press",
+  "name": "Bench Press",
+  "description": "Simplified bench press rules mapped to available metrics for demo.",
+  "metrics": {
+    "required": ["torsoAngleDeg", "kneeAngle", "confidence"],
+    "min_confidence": 0.45
+  },
+  "rules": [
+    {
+      "id": "torso_stable",
+      "type": "max",
+      "description": "Keep torso stable on the bench (proxy).",
+      "params": { "max_deg": 35 },
+      "severity": "warn"
+    },
+    {
+      "id": "knees_controlled",
+      "type": "min",
+      "description": "Avoid excessive leg drive (proxy via knee angle).",
+      "params": { "min_deg": 90 },
+      "severity": "warn"
+    }
+  ],
+  "messages": {
+    "torso_stable": {
+      "warn": "Keep your torso steady on the bench.",
+      "pass": "Torso steady — solid base."
+    },
+    "knees_controlled": {
+      "warn": "Ease the leg drive; keep feet planted.",
+      "pass": "Good lower-body stability."
+    }
+  }
+}

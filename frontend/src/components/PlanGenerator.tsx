@@ -7,7 +7,7 @@ import React, { useState } from "react";
  * - Useful for demo: generate a month/quarter/year plan from user input
  */
 
-export default function PlanGenerator() {
+export default function PlanGenerator({ onPlanGenerated }: { onPlanGenerated?: (plan: any) => void }) {
   const [profile, setProfile] = useState({
     age: 30,
     weight_kg: 75,
@@ -38,8 +38,13 @@ export default function PlanGenerator() {
         })
       });
       const data = await res.json();
-      if (data && data.plan) setPlan(data.plan);
-      else setPlan({ error: "No plan returned", raw: data });
+      if (data && data.plan) {
+        setPlan(data.plan);
+        // notify parent so RoutineRunner can start tracking the routine
+        onPlanGenerated?.(data.plan);
+      } else {
+        setPlan({ error: "No plan returned", raw: data });
+      }
     } catch (err) {
       console.error("generatePlan error", err);
       setPlan({ error: "Network error" });

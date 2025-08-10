@@ -1,0 +1,35 @@
+{
+  "id": "push_up",
+  "name": "Push-Up",
+  "description": "Push-up rules approximated via torso angle and knee angle for demo.",
+  "metrics": {
+    "required": ["torsoAngleDeg", "kneeAngle", "confidence"],
+    "min_confidence": 0.45
+  },
+  "rules": [
+    {
+      "id": "torso_straight",
+      "type": "max",
+      "description": "Keep body straight — avoid sagging hips (proxy).",
+      "params": { "max_deg": 25 },
+      "severity": "warn"
+    },
+    {
+      "id": "knees_extended",
+      "type": "min",
+      "description": "Knees extended for standard push-up.",
+      "params": { "min_deg": 150 },
+      "severity": "warn"
+    }
+  ],
+  "messages": {
+    "torso_straight": {
+      "warn": "Keep your body straight — brace your core.",
+      "pass": "Bodyline straight — solid."
+    },
+    "knees_extended": {
+      "warn": "Extend your knees — avoid kneeling variation.",
+      "pass": "Knees extended — great."
+    }
+  }
+}

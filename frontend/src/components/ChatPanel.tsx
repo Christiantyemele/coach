@@ -138,13 +138,13 @@ export default function ChatPanel() {
       analyser.fftSize = 512;
       source.connect(analyser);
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
+      const dataArray = new Uint8Array(new ArrayBuffer(bufferLength));
       audioAnalyserRef.current = analyser;
       audioDataRef.current = dataArray;
 
       function update() {
         if (!audioAnalyserRef.current || !audioDataRef.current) return;
-        audioAnalyserRef.current.getByteTimeDomainData(audioDataRef.current);
+        audioAnalyserRef.current.getByteTimeDomainData(audioDataRef.current as any);
         // compute RMS
         let sum = 0;
         for (let i = 0; i < audioDataRef.current.length; i++) {
@@ -331,15 +331,74 @@ export default function ChatPanel() {
       }
       const data = await res.json();
       console.log("message endpoint response", data);
+      
+      // Handle text reply
       if (data && data.reply) {
         setMessages((m) => [...m, { from: "coach", text: data.reply }]);
       } else {
         setMessages((m) => [...m, { from: "coach", text: "(no reply)" }]);
       }
+      
+      // Handle audio response if present
+      if (data && data.audio && data.audio.data && data.audio.encoding === "base64") {
+        try {
+          await playBase64Audio(data.audio.data, data.audio.format);
+          console.log("✅ Audio played successfully");
+        } catch (audioErr) {
+          console.error("❌ Audio playback failed:", audioErr);
+          setMessages((m) => [...m, { from: "system", text: "Audio playback failed" }]);
+        }
+      }
     } catch (err) {
       console.error("sendTextToBackend error", err);
       setMessages((m) => [...m, { from: "system", text: "Failed to contact server." }]);
     }
+  }
+
+  async function playBase64Audio(base64Data: string, format: string = "audio/mpeg"): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Step 1: Decode base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Step 2: Create a Blob with the correct MIME type
+        const blob = new Blob([bytes], { type: format });
+        
+        // Step 3: Create an object URL from the Blob
+        const audioUrl = URL.createObjectURL(blob);
+        
+        // Step 4: Play the audio using HTML5 Audio API
+        const audio = new Audio(audioUrl);
+        
+        audio.onloadeddata = () => {
+          console.log("Audio loaded, duration:", audio.duration);
+        };
+        
+        audio.onended = () => {
+          // Clean up the object URL to free memory
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+        
+        audio.onerror = (error) => {
+          URL.revokeObjectURL(audioUrl);
+          reject(new Error(`Audio playback error: ${error}`));
+        };
+        
+        // Start playback
+        audio.play().catch((playError) => {
+          URL.revokeObjectURL(audioUrl);
+          reject(new Error(`Audio play() failed: ${playError.message}`));
+        });
+        
+      } catch (error) {
+        reject(new Error(`Audio processing failed: ${error.message}`));
+      }
+    });
   }
 
   function sendText() {

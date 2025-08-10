@@ -28,6 +28,12 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
   const hipHistoryRef = useRef<number[]>([]);
   const lastRepTsRef = useRef<number>(0);
 
+  // Issue tracking refs for form feedback
+  const goodFormSinceRef = useRef<number | null>(null);
+  const issueFirstSeenRef = useRef<Map<string, number>>(new Map());
+  const issueLastSpokenRef = useRef<Map<string, number>>(new Map());
+  const issueSpokenCountRef = useRef<Map<string, number>>(new Map());
+
     // Latest active tip text to say (updated by analysis)
     const lastTipTextRef = useRef<string>("");
 
@@ -47,6 +53,129 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
       }
       return () => {
         // keep element for app lifetime; do not remove to preserve user gesture allowance
+      };
+    }, []);
+
+    // Music controller: background music + ducking + simple UI overlay
+    const musicAudioRef = useRef<HTMLAudioElement | null>(null);
+    const baseMusicVolumeRef = useRef<number>(coachConfig.musicDefaultVolume);
+    const lastSnippetTsRef = useRef<number>(0);
+
+    useEffect(() => {
+      // Create music element
+      if (!musicAudioRef.current) {
+        const m = document.createElement("audio");
+        m.id = "music-audio";
+        m.autoplay = false;
+        m.preload = "auto";
+        m.crossOrigin = "anonymous";
+        (m as any).playsInline = true;
+        m.loop = true;
+        m.src = coachConfig.musicTracks[coachConfig.musicDefaultIndex]?.url || "";
+        m.volume = baseMusicVolumeRef.current;
+        document.body.appendChild(m);
+        musicAudioRef.current = m;
+
+        // UI overlay (tiny)
+        const ui = document.createElement("div");
+        ui.id = "music-ui";
+        ui.style.position = "fixed";
+        ui.style.left = "12px";
+        ui.style.bottom = "12px";
+        ui.style.zIndex = "9999";
+        ui.style.background = "rgba(0,0,0,0.6)";
+        ui.style.color = "#fff";
+        ui.style.padding = "8px 10px";
+        ui.style.borderRadius = "8px";
+        ui.style.fontSize = "12px";
+        ui.style.display = "flex";
+        ui.style.gap = "8px";
+        ui.style.alignItems = "center";
+
+        const playBtn = document.createElement("button");
+        playBtn.textContent = "Play";
+        playBtn.style.cursor = "pointer";
+        playBtn.onclick = async () => {
+          if (!musicAudioRef.current) return;
+          if (musicAudioRef.current.paused) {
+            try { await musicAudioRef.current.play(); playBtn.textContent = "Pause"; } catch {}
+          } else {
+            musicAudioRef.current.pause();
+            playBtn.textContent = "Play";
+          }
+        };
+
+        const trackSel = document.createElement("select");
+        trackSel.style.background = "#111";
+        trackSel.style.color = "#fff";
+        coachConfig.musicTracks.forEach((t, i) => {
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.text = t.title;
+          if (i === coachConfig.musicDefaultIndex) opt.selected = true;
+          trackSel.appendChild(opt);
+        });
+        trackSel.onchange = () => {
+          const idx = parseInt(trackSel.value, 10);
+          if (!musicAudioRef.current) return;
+          musicAudioRef.current.src = coachConfig.musicTracks[idx]?.url || "";
+          if (!musicAudioRef.current.paused) musicAudioRef.current.play().catch(() => {});
+        };
+
+        const vol = document.createElement("input");
+        vol.type = "range";
+        vol.min = "0";
+        vol.max = "1";
+        vol.step = "0.01";
+        vol.value = String(baseMusicVolumeRef.current);
+        vol.oninput = () => {
+          baseMusicVolumeRef.current = Number(vol.value);
+          if (musicAudioRef.current) {
+            // If ducking is active, music will be at ducked vol; base is remembered
+            const ducked = !musicAudioRef.current.paused && musicAudioRef.current.volume < baseMusicVolumeRef.current;
+            if (!ducked) musicAudioRef.current.volume = baseMusicVolumeRef.current;
+          }
+        };
+
+        const label = document.createElement("span");
+        label.textContent = "Music";
+        ui.appendChild(label);
+        ui.appendChild(playBtn);
+        ui.appendChild(trackSel);
+        ui.appendChild(vol);
+        document.body.appendChild(ui);
+      }
+
+      // Ducking: listen for TTS start/end
+      const onTtsStart = () => {
+        if (!musicAudioRef.current) return;
+        if (!musicAudioRef.current.paused) {
+          musicAudioRef.current.volume = Math.max(0, baseMusicVolumeRef.current * coachConfig.musicDuckFactor);
+        }
+      };
+      const onTtsEnd = () => {
+        if (!musicAudioRef.current) return;
+        musicAudioRef.current.volume = baseMusicVolumeRef.current;
+      };
+      window.addEventListener("tts-start", onTtsStart as any);
+      window.addEventListener("tts-end", onTtsEnd as any);
+
+      // Motivational snippets after reps
+      const onRep = () => {
+        const now = Date.now();
+        if (now - lastSnippetTsRef.current < coachConfig.snippetCooldownMs) return;
+        lastSnippetTsRef.current = now;
+        // Choose a random phrase and speak via existing TTS flow (dispatch will duck)
+        const phrase = coachConfig.snippetPhrases[Math.floor(Math.random() * coachConfig.snippetPhrases.length)];
+        // Force + bypass to ensure it plays once per cooldown window
+        speakTexts([phrase], { force: true, bypassBackoff: true });
+      };
+      window.addEventListener("rep-complete", onRep as any);
+
+      return () => {
+        window.removeEventListener("tts-start", onTtsStart as any);
+        window.removeEventListener("tts-end", onTtsEnd as any);
+        window.removeEventListener("rep-complete", onRep as any);
       };
     }, []);
 
@@ -179,12 +308,12 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
         const pose = poses && poses.length ? poses[0] : null;
 
         // Only draw overlays; do NOT draw the video frame to avoid duplication/ghosting
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx!.clearRect(0, 0, canvas.width, canvas.height);
 
         if (pose) {
           const keypoints = pose.keypoints || pose;
-          drawKeypoints(ctx, keypoints);
-          drawSkeleton(ctx, keypoints);
+          drawKeypoints(ctx!, keypoints);
+          drawSkeleton(ctx!, keypoints);
           processPoseMetrics(keypoints);
         }
       } catch (err) {
@@ -264,7 +393,7 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
   }
 
   // ElevenLabs TTS with strong anti-spam: in-flight mutex, per-phrase/global backoff, Retry-After respect
-  async function speakTexts(texts: string[], opts?: { force?: boolean }) {
+  async function speakTexts(texts: string[], opts?: { force?: boolean; bypassBackoff?: boolean }) {
     const line = texts.join(". ").trim();
     if (!line) return;
 
@@ -276,12 +405,12 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
       return;
     }
 
-    // Respect global backoff after any 429
-    if (now < ttsBackoffUntilRef.current) return;
+    // Respect global backoff after any 429 (unless bypassing)
+    if (!opts?.bypassBackoff && now < ttsBackoffUntilRef.current) return;
 
-    // Respect per-phrase nextAllowed
+    // Respect per-phrase nextAllowed (unless bypassing)
     const nextAllowed = perPhraseNextAllowedRef.current.get(phraseKey) || 0;
-    if (now < nextAllowed) return;
+    if (!opts?.bypassBackoff && now < nextAllowed) return;
 
     // Optional soft global throttle (does not bypass backoff)
     if (!opts?.force && coachConfig.globalSoftRequestMs > 0) {
@@ -339,8 +468,13 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
 
       if (!ttsAudioRef.current) {
         ttsAudioRef.current = new Audio();
+        // Announce to the app when TTS starts/ends so music can duck
+        ttsAudioRef.current.onplay = () => {
+          try { window.dispatchEvent(new CustomEvent("tts-start")); } catch {}
+        };
         ttsAudioRef.current.onended = () => {
           currentPlayingTextRef.current = "";
+          try { window.dispatchEvent(new CustomEvent("tts-end")); } catch {}
         };
       } else {
         try { ttsAudioRef.current.pause(); } catch {}
@@ -512,7 +646,11 @@ export default function CameraFeed({ exerciseId = "back_squat" }: { exerciseId?:
       if (downState.current && avgHipY <= upThreshold && intervalOK) {
         downState.current = false;
         lastRepTsRef.current = nowTs;
-        setRepCount((c) => c + 1);
+        setRepCount((c) => {
+          const next = c + 1;
+          try { window.dispatchEvent(new CustomEvent("rep-complete", { detail: { count: next } })); } catch {}
+          return next;
+        });
         // reset window to avoid counting jitter
         hipHistoryRef.current = [];
       }

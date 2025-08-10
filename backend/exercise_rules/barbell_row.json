@@ -1,0 +1,35 @@
+{
+  "id": "barbell_row",
+  "name": "Barbell Row",
+  "description": "Barbell row: torso hinged 20–60 degrees.",
+  "metrics": {
+    "required": ["torsoAngleDeg", "confidence"],
+    "min_confidence": 0.45
+  },
+  "rules": [
+    {
+      "id": "torso_angle_min",
+      "type": "min",
+      "description": "Hinge sufficiently.",
+      "params": { "min_deg": 20 },
+      "severity": "warn"
+    },
+    {
+      "id": "torso_angle_max",
+      "type": "max",
+      "description": "Don’t stand up too tall — keep the hinge.",
+      "params": { "max_deg": 60 },
+      "severity": "warn"
+    }
+  ],
+  "messages": {
+    "torso_angle_min": {
+      "warn": "Hinge more at the hips.",
+      "pass": "Good hinge depth."
+    },
+    "torso_angle_max": {
+      "warn": "Stay hinged — don’t stand up between reps.",
+      "pass": "Hinge maintained."
+    }
+  }
+}
