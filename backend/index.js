@@ -224,8 +224,6 @@ app.post("/api/generate-plan", async (req, res) => {
         const replyText = response?.content?.[0]?.text || null;
         if (replyText) {
           try {
-            console.log("Anthropic SDK reply:", replyText);
-            
             // Strip JSON code block markers if present
             const cleanedText = replyText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
             
@@ -279,6 +277,29 @@ app.post("/api/generate-plan", async (req, res) => {
   } catch (err) {
     console.error("Error in /api/generate-plan", err);
     res.status(500).json({ error: "server_error" });
+  }
+});
+
+/**
+ * GET /api/rules/:exercise_id
+ * Returns the exercise rule JSON from backend/exercise_rules/<exercise_id>.json
+ */
+app.get("/api/rules/:exercise_id", (req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const exerciseId = String(req.params.exercise_id || "").trim();
+    if (!exerciseId) return res.status(400).json({ error: "missing_exercise_id" });
+    const rulePath = path.join(__dirname, "exercise_rules", `${exerciseId}.json`);
+    if (!fs.existsSync(rulePath)) {
+      return res.status(404).json({ error: "unknown_exercise" });
+    }
+    const ruleJson = JSON.parse(fs.readFileSync(rulePath, "utf8"));
+    res.setHeader("Cache-Control", "no-store");
+    return res.json(ruleJson);
+  } catch (err) {
+    console.error("rules endpoint error", err);
+    return res.status(500).json({ error: "server_error" });
   }
 });
 
@@ -458,6 +479,93 @@ app.post("/api/voice", upload.single("file"), async (req, res) => {
     const persona = (req.body && req.body.persona) || "default";
     const mockedTranscript = `Mock transcript (persona=${persona}). Example: "Start set one, three reps."`;
     res.status(200).json({ transcript: mockedTranscript, source: "fallback_exception" });
+  }
+});
+
+// Text-to-Speech: synthesize speech with ElevenLabs and return audio/mpeg
+app.post("/api/tts", async (req, res) => {
+  try {
+    const { text, voice_id, model_id, optimize_streaming_latency } = req.body || {};
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({ error: "missing_text" });
+    }
+
+    // Optional rate limiting (disable for MVP by setting TTS_RATE_LIMIT_DISABLED=true)
+    const disableRateLimit = String(process.env.TTS_RATE_LIMIT_DISABLED || "").toLowerCase() === "true";
+
+    // Per-phrase rate limit so different mistakes can speak immediately
+    const ip = (req.headers["x-forwarded-for"]?.toString().split(",")[0] || req.ip || "").toString();
+    const phraseKey = String(text || "").trim().toLowerCase();
+    const nowTs = Date.now();
+    const perPhraseCooldown = Number(process.env.TTS_PER_PHRASE_COOLDOWN_MS || 11000);
+    const maxRepeats = Number(process.env.TTS_MAX_REPEATS_PER_PHRASE || 3);
+
+    app.locals = app.locals || {};
+    app.locals.ttsByIpPhrase = app.locals.ttsByIpPhrase || new Map();
+
+    const mapKey = `${ip}|${phraseKey}`;
+    const entry = app.locals.ttsByIpPhrase.get(mapKey) || { lastTs: 0, count: 0 };
+
+    if (!disableRateLimit) {
+      // Enforce per-phrase cooldown
+      if (nowTs - entry.lastTs < perPhraseCooldown) {
+        const retryMs = perPhraseCooldown - (nowTs - entry.lastTs);
+        res.setHeader("Retry-After", Math.ceil(retryMs / 1000).toString());
+        return res.status(429).json({ error: "rate_limited_phrase", next_allowed_in_ms: retryMs });
+      }
+
+      // Enforce per-phrase max repeats
+      if (entry.count >= maxRepeats) {
+        return res.status(429).json({ error: "max_repeats_reached" });
+      }
+    }
+
+    // Update entry (pre-emptively to avoid races)
+    app.locals.ttsByIpPhrase.set(mapKey, { lastTs: nowTs, count: entry.count + 1 });
+
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      // No key: tell client to fallback locally
+      return res.status(501).json({ error: "tts_unavailable" });
+    }
+
+    const vid = voice_id || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+    const model = model_id || process.env.ELEVENLABS_TTS_MODEL || "eleven_multilingual_v2";
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${vid}`;
+
+    const { default: fetch } = await import("node-fetch");
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg"
+      },
+      body: JSON.stringify({
+        text,
+        model_id: model,
+        optimize_streaming_latency: typeof optimize_streaming_latency === "number" ? optimize_streaming_latency : 0,
+        voice_settings: {
+          stability: Number(process.env.ELEVENLABS_VOICE_STABILITY || 0.5),
+          similarity_boost: Number(process.env.ELEVENLABS_VOICE_SIMILARITY || 0.75)
+        }
+      })
+    });
+
+    if (!resp.ok) {
+      const bodyTxt = await resp.text().catch(() => "");
+      console.warn("ElevenLabs TTS non-ok", resp.status, bodyTxt);
+      return res.status(502).json({ error: "tts_failed", status: resp.status, body: bodyTxt.slice(0, 500) });
+    }
+
+    const arrayBuffer = await resp.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", buffer.length);
+    return res.status(200).send(buffer);
+  } catch (err) {
+    console.error("TTS error", err);
+    return res.status(500).json({ error: "server_error" });
   }
 });
 
