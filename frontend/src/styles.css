@@ -57,9 +57,52 @@ canvas.overlay {
   position: absolute;
   left: 0;
   top: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  z-index: 2; /* ensure overlay is above the video */
 }
 
+/* New metrics panel styles - readable, separate from video overlay */
+.camera-info {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.metrics-panel {
+  background: rgba(10, 14, 20, 0.85);
+  color: #e6eef8;
+  padding: 10px 12px;
+  border-radius: 8px;
+  min-width: 220px;
+  max-width: 360px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.metrics-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* status text style */
+.status-text {
+  color: var(--muted);
+  margin: 0;
+}
+
+.camera-help {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Chat and other styles (unchanged) */
 .chat-panel .controls {
   display: flex;
   gap: 8px;
