@@ -4,7 +4,7 @@
   "description": "Validation rules for a back squat rep measured from keypoint-derived metrics.",
   "metrics": {
     "required": ["hipY", "kneeY", "torsoAngleDeg", "kneeAngle", "confidence"],
-    "min_confidence": 0.46
+    "min_confidence": 0.44
   },
   "rules": [
     {
