@@ -12,7 +12,7 @@
       "type": "ratio",
       "description": "Hip should drop sufficiently relative to knee-hip distance.",
       "params": {
-        "min_ratio": 0.35
+        "min_ratio": 0.38
       },
       "severity": "fail"
     },
