@@ -178,55 +178,95 @@ export default function RoutineRunner({ plan: planProp, startDay = 1 }: Props) {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 16 }}>
+    <div className="routine-layout" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr", gap: 16 }}>
       <div>
-        {/* Pose + validation */}
-        <div style={{ marginBottom: 8 }}>
-          <strong>Current Exercise:</strong>{" "}
-          {currentExercise ? `${currentExercise.name} (${setIndex + 1}/${currentExercise.sets})` : "None"}
+        {/* Workout HUD */}
+        <div className="workout-hud">
+          <div>
+            <p className="hud-title">
+              {currentExercise ? currentExercise.name : "No exercise selected"}
+            </p>
+            <p className="hud-sub">
+              {currentExercise
+                ? `Set ${setIndex + 1} of ${currentExercise.sets} • Target ${currentExercise.reps} reps`
+                : "Generate a plan on the right or use a saved plan."}
+            </p>
+          </div>
+          <div className="hud-progress">
+            <div className="progress-bar">
+              <div
+                className="progress-inner"
+                style={{
+                  width: currentExercise ? `${Math.min(100, ((setIndex + 1) / (currentExercise.sets || 1)) * 100)}%` : "0%"
+                }}
+              />
+            </div>
+            <div style={{ minWidth: 70, textAlign: "right", color: "var(--muted)" }}>
+              {isResting ? `Rest ${restLeft}s` : `Reps ${liveReps}`}
+            </div>
+          </div>
         </div>
-        {/* Pass exerciseId so CameraFeed loads matching rules via /api/rules/:id */}
+
+        {/* Pose + validation */}
         <CameraFeed exerciseId={currentExercise?.id || "back_squat"} />
+
+        {/* HUD Actions under video */}
+        <div className="hud-actions" style={{ marginTop: 12 }}>
+          <button onClick={finishSet} disabled={!currentExercise || isResting}>
+            Finish Set
+          </button>
+          <button className="btn-secondary" onClick={skipExercise} disabled={!currentExercise}>
+            Skip
+          </button>
+          <button className="btn-danger" onClick={nextExercise} disabled={!currentExercise}>
+            Next Exercise
+          </button>
+        </div>
       </div>
 
-      <div style={{ padding: 12, background: "rgba(0,0,0,0.5)", color: "#fff", borderRadius: 8 }}>
+      <div className="routine-card">
         <h3 style={{ marginTop: 0 }}>Routine</h3>
+
         {!plan && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button onClick={loadSavedPlan} disabled={loadingPlan}>
               Use saved plan
             </button>
-            <button onClick={loadQuickPlan} disabled={loadingPlan}>
+            <button className="btn-secondary" onClick={loadQuickPlan} disabled={loadingPlan}>
               {loadingPlan ? "Loading..." : "Load quick plan (fallback)"}
             </button>
-            {error && <div style={{ color: "#ff6" }}>Error: {error}</div>}
+            {error && <div style={{ color: "#ffec99" }}>Error: {error}</div>}
           </div>
         )}
+
         {plan && (
           <>
-            <div style={{ margin: "6px 0" }}>
-              <div><strong>{plan.plan_name}</strong></div>
-              <div>Day {dayIndex + 1} of {plan.days.length}</div>
+            <div style={{ margin: "8px 0" }}>
+              <div style={{ fontWeight: 800, color: "#eaf6ff" }}>{plan.plan_name}</div>
+              <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                Day {dayIndex + 1} of {plan.days.length}
+              </div>
             </div>
 
-            <div style={{ margin: "6px 0", maxHeight: 220, overflowY: "auto", background: "rgba(255,255,255,0.05)", padding: 8, borderRadius: 6 }}>
+            <div className="routine-list">
               {todayExercises.map((ex, i) => (
-                <div key={i} style={{ padding: 6, borderRadius: 4, background: i === exerciseIndex ? "rgba(0,120,255,0.25)" : "transparent" }}>
-                  {i + 1}. {ex.name} — {ex.sets} x {ex.reps}{ex.rest_seconds ? `, rest ${ex.rest_seconds}s` : ""}
+                <div
+                  key={i}
+                  className={`routine-item ${i === exerciseIndex ? "active" : ""}`}
+                  onClick={() => { setExerciseIndex(i); setSetIndex(0); setLiveReps(0); }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <strong>{i + 1}. {ex.name}</strong> &nbsp;—&nbsp; {ex.sets} × {ex.reps}
+                  {typeof ex.rest_seconds === "number" ? `, rest ${ex.rest_seconds}s` : ""}
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop: 10 }}>
-              <div>Live reps (from camera): <strong>{liveReps}</strong></div>
-              <div>Set: <strong>{setIndex + 1}</strong> / {currentExercise?.sets || 0}</div>
-              <div>Rest: <strong>{isResting ? `${restLeft}s` : "—"}</strong></div>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <button onClick={finishSet} disabled={!currentExercise || isResting}>Finish Set</button>
-              <button onClick={skipExercise} disabled={!currentExercise}>Skip</button>
-              <button onClick={nextExercise} disabled={!currentExercise}>Next Exercise</button>
+            <div className="routine-meta">
+              <div>Live reps: <strong style={{ color: "#eaf6ff" }}>{liveReps}</strong></div>
+              <div>Set: <strong style={{ color: "#eaf6ff" }}>{setIndex + 1}</strong> / {currentExercise?.sets || 0}</div>
+              <div>Rest: <strong style={{ color: "#eaf6ff" }}>{isResting ? `${restLeft}s` : "—"}</strong></div>
             </div>
           </>
         )}
