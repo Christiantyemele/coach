@@ -34,15 +34,14 @@ Quickstart (dev)
    - LOVEABLE_API_KEY (optional)
    - BACKEND_URL (if backend deployed or ngrok endpoint)
 
-3. Start frontend:
-   - cd frontend
+3. Start both frontend and backend together (single command at repo root):
    - npm install
    - npm run dev
+   This will run Vite (frontend) and Express (backend) concurrently.
 
-4. Start backend (optional local tool endpoints):
-   - cd backend
-   - npm install
-   - npm run dev
+4. Legacy: run frontend and backend separately (optional):
+   - cd frontend && npm install && npm run dev
+   - cd backend && npm install && npm run dev
 
 5. If ElevenLabs Agents need to call local tool endpoints, expose backend with ngrok:
    - ngrok http 3000

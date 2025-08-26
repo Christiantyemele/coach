@@ -1,0 +1,23 @@
+{
+  "name": "ai-sports-coach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Root package to orchestrate frontend and backend for AI Sports Coach",
+  "scripts": {
+    "install:frontend": "npm --prefix frontend install",
+    "install:backend": "npm --prefix backend install",
+    "postinstall": "npm run install:frontend && npm run install:backend",
+
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev": "concurrently -k -n frontend,backend -c magenta,cyan \"npm run dev:frontend\" \"npm run dev:backend\"",
+
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:frontend",
+
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
