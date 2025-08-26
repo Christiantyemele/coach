@@ -1,0 +1,53 @@
+{
+  "id": "back_squat",
+  "name": "Back Squat",
+  "description": "Validation rules for a back squat rep measured from keypoint-derived metrics.",
+  "metrics": {
+    "required": ["hipY", "kneeY", "torsoAngleDeg", "kneeAngle", "confidence"],
+    "min_confidence": 0.45
+  },
+  "rules": [
+    {
+      "id": "depth_ratio",
+      "type": "ratio",
+      "description": "Hip should drop sufficiently relative to knee-hip distance.",
+      "params": {
+        "min_ratio": 0.35
+      },
+      "severity": "fail"
+    },
+    {
+      "id": "torso_angle",
+      "type": "max",
+      "description": "Torso lean should be below threshold",
+      "params": {
+        "max_deg": 25
+      },
+      "severity": "warn"
+    },
+    {
+      "id": "knee_angle_min",
+      "type": "min",
+      "description": "Knee angle must remain above threshold",
+      "params": {
+        "min_deg": 80
+      },
+      "severity": "warn"
+    }
+  ],
+  "messages": {
+    "depth_ratio": {
+      "fail": "Depth insufficient: try lowering your hip until it reaches knee level.",
+      "warn": "Depth may be shallow.",
+      "pass": "Nice depth — keep that range of motion."
+    },
+    "torso_angle": {
+      "warn": "You are leaning forward; keep your chest up.",
+      "pass": "Great chest position — torso stays upright."
+    },
+    "knee_angle_min": {
+      "warn": "Knee angle small, check knee tracking and control descent.",
+      "pass": "Knees tracking well — solid control."
+    }
+  }
+}
