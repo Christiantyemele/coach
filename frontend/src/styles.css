@@ -6,13 +6,38 @@
   --accent: #61dafb;
 }
 
-body {
+/* Global reset for predictable sizing */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   background: linear-gradient(180deg, #071126 0%, #07131a 100%);
   color: #e6eef8;
   min-height: 100vh;
+  overflow-x: hidden; /* prevent sideways scroll on rotate */
 }
+
+/* Handle device safe areas (iOS notch) */
+body { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Use dynamic viewport height to reduce resize jumps on mobile address bar */
+.app { min-height: 100dvh; }
+
+/* Base typography and controls */
+h1, h2, h3, h4 { margin: 0.2em 0; }
+label { font-size: 14px; color: var(--muted); }
+input, select, button { font-size: 14px; }
+button {
+  background: rgba(255,255,255,0.08);
+  color: #e6eef8;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+button:hover { background: rgba(255,255,255,0.12); }
+button:disabled { opacity: 0.6; cursor: default; }
 
 .app-header {
   padding: 16px;
@@ -21,17 +46,18 @@ body {
 
 .app-main {
   display: flex;
+  flex-direction: column; /* mobile-first: stacked */
   gap: var(--gap);
   padding: 16px;
 }
 
 .left-pane {
   flex: 1;
-  max-width: 640px;
+  max-width: 100%; /* mobile-first: full width */
 }
 
 .right-pane {
-  width: 360px;
+  width: 100%; /* mobile-first: full width */
   background: rgba(255,255,255,0.02);
   border-radius: 8px;
   padding: 12px;
@@ -47,11 +73,17 @@ body {
   overflow: hidden;
 }
 
+/* Maintain sensible aspect on mobile, allow contain within viewport */
+.camera-feed .video-wrapper { aspect-ratio: 16 / 9; }
+
 video.video {
   display: block;
   width: 100%;
   height: auto;
 }
+
+/* Ensure generic media scales inside containers */
+img, video, canvas { max-width: 100%; }
 
 canvas.overlay {
   position: absolute;
@@ -144,4 +176,83 @@ canvas.overlay {
   border: none;
   background: rgba(255,255,255,0.03);
   color: inherit;
+}
+
+/* Plan generator minor polish */
+.plan-generator input,
+.plan-generator select {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: inherit;
+}
+.plan-generator button { width: auto; }
+
+/* Responsive layout */
+@media (min-width: 1024px) {
+  .app-main { flex-direction: row; }
+  .left-pane { max-width: 640px; }
+  .right-pane { width: 360px; }
+}
+
+@media (max-width: 768px) {
+  .app-header { padding: 12px; }
+  .app-main { gap: 10px; }
+
+  h1 { font-size: 20px; }
+  h3 { font-size: 16px; }
+
+  .camera-feed .video-wrapper { max-width: 100%; }
+
+  .metrics-panel {
+    width: 100%;
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .messages {
+    max-height: 50vh;
+  }
+
+  .composer { flex-direction: column; }
+  .composer input { width: 100%; }
+  .composer button { width: 100%; }
+
+  .plan-generator pre {
+    max-height: 40vh;
+  }
+}
+
+/* Orientation-specific tuning for better rotation behavior */
+@media (orientation: landscape) and (max-width: 1024px) {
+  /* On small landscape, use side-by-side to utilize width */
+  .app-main { flex-direction: row; align-items: flex-start; }
+  .right-pane { max-width: 420px; }
+  .messages { max-height: 60vh; }
+  .camera-feed .video-wrapper { max-height: 70vh; }
+}
+
+@media (orientation: portrait) and (max-width: 768px) {
+  .messages { max-height: 45vh; }
+}
+
+@media (max-width: 480px) {
+  :root { --gap: 10px; }
+  body { font-size: 14px; }
+  .app-main { padding: 10px; }
+
+  .right-pane {
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .chat-panel .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-panel .vu-meter > div { height: 6px; }
 }
